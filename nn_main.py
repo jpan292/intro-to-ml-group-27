@@ -219,7 +219,7 @@ print(f"Samples: {n_samples}, Features: {n_features}")
 
 #Training
 
-# First split: 70% train, 30% temp (val+test)
+#First split: 70% train, 30% temp (val+test)
 X_train, X_temp, y_train, y_temp = train_test_split(
     X,
     y,
@@ -228,7 +228,7 @@ X_train, X_temp, y_train, y_temp = train_test_split(
     stratify=y,#keep class balance consistent
 )
 
-# Second split: split temp into 50/50 into 15% val, 15% test
+#Second split: split temp into 50/50 into 15% val, 15% test
 X_val, X_test, y_val, y_test = train_test_split(
     X_temp,
     y_temp,
@@ -303,19 +303,5 @@ print(f"Training time (Model 2): {time_model2:.2f} seconds")
 metrics2 = evaluate_and_report(model2, X_test_scaled, y_test, "Model 2: Hidden Layers")
 metrics2["training_time_sec"] = time_model2
 results_summary["Model 2"] = metrics2
-
-
-#Print metrics for all three models
-
-
-print("\n==================== Summary of all models ====================")
-for name, m in results_summary.items():
-    print(f"\n{name}")
-    print(f"  Accuracy       : {m['accuracy']:.4f}")
-    print(f"  Precision      : {m['precision']:.4f}")
-    print(f"  Recall         : {m['recall']:.4f}")
-    print(f"  F1 score       : {m['f1']:.4f}")
-    print(f"  AUC            : {m['auc']:.4f}")
-    print(f"  Training time  : {m['training_time_sec']:.2f} sec")
 
 plt.show()
