@@ -192,12 +192,6 @@ def build_model_2(input_dim):
     )
     return model
 
-"""
-1D CNN over the feature vector:
-- First layer: 32 filters, kernal size = 3
-- Second layer: 64 filters, kernal size = 3
-- Dense layer: 32 nodes
-"""
 
 
 #Load + Impute + Split
