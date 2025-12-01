@@ -251,6 +251,7 @@ early_stop = keras.callbacks.EarlyStopping(
     restore_best_weights=True,
 )
 
+#Training Factors
 EPOCHS = 50
 BATCH_SIZE = 64
 
