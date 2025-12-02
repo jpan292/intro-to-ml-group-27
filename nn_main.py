@@ -19,7 +19,7 @@ from sklearn.metrics import (
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-
+import data_module
 """
 README:
 
@@ -29,39 +29,6 @@ README:
 2. Complex NN with 2 hidden layers
 """
 
-
-def impute_to_numeric(df):
-
-    df = df.drop(columns=["has_short_name", "has_full_name", "city"], errors="ignore")
-
-    #Replace NaN values using mean of non-NaN values
-    for col in df.columns:
-        #Only process numeric-like columns
-        valid_values = df[col][~df[col].isna() & (df[col] != "Unknown")]
-
-        #Convertto numeric (Unknown values become NaN temporarily)
-        numeric_values = pd.to_numeric(valid_values, errors="coerce").dropna()
-
-        if len(numeric_values) > 0:
-            mean_val =  numeric_values.mean()
-            #Replace NaN with the computed mean
-            df[col] = df[col].replace(np.nan, mean_val)
-
-    #Replace "Unknown" using mean of non-Unknown values
-    for col in df.columns:
-        #Extract valid (non Unknown) values
-        valid_values = df[col][df[col] != "Unknown"]
-
-        #Convert to numeric
-        numeric_values = pd.to_numeric(valid_values, errors="coerce").dropna()
-
-        if len(numeric_values) > 0:
-            mean_val = numeric_values.mean()
-            #Replace "Unknown" with mean
-            df[col] = df[col].replace("Unknown", mean_val)
-
-    #print(df.head())#For Debug
-    return df
 
 def plot_confusion_matrix(cm, model_name):
     """Plot a 2x2 confusion matrix."""
@@ -194,9 +161,10 @@ def build_model_2(input_dim):
 
 
 
-#Load + Impute + Split
-df = pd.read_csv("./bots_vs_users.csv")
-df = impute_to_numeric(df)
+df = data_module.load_data()
+X, y, preprocessor = data_module.preprocess(df)
+X_train, y_train, X_val, y_val, X_test, y_test = data_module.split(X, y, preprocessor)
+
 
 SEED = 42
 
@@ -206,30 +174,10 @@ np.random.seed(SEED)
 tf.random.set_seed(SEED)
 
 
-y = df["target"].values.astype("float32")
-X = df.drop(columns=["target"]).values.astype("float32") #Get all features except 'target'
 n_samples, n_features = X.shape
 print(f"Samples: {n_samples}, Features: {n_features}")
 
-#Training
 
-#First split: 70% train, 30% temp (val+test)
-X_train, X_temp, y_train, y_temp = train_test_split(
-    X,
-    y,
-    test_size=0.30,
-    random_state=SEED,
-    stratify=y,#keep class balance consistent
-)
-
-#Second split: split temp into 50/50 into 15% val, 15% test
-X_val, X_test, y_val, y_test = train_test_split(
-    X_temp,
-    y_temp,
-    test_size=0.50,
-    random_state=SEED,
-    stratify=y_temp,
-)
 
 """
 #For Debug
@@ -244,6 +192,11 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_val_scaled = scaler.transform(X_val)
 X_test_scaled = scaler.transform(X_test)
+
+n_features = X_train_scaled.shape[1]
+
+
+
 
 early_stop = keras.callbacks.EarlyStopping(
     monitor="val_loss",
@@ -300,3 +253,4 @@ metrics2["training_time_sec"] = time_model2
 results_summary["Model 2"] = metrics2
 
 plt.show()
+
