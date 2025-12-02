@@ -1,5 +1,7 @@
+
 import pandas as pd
 import numpy as np
+import data_module
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
@@ -14,25 +16,13 @@ from sklearn.metrics import classification_report
 
 
 
-# Import the dataset
-df = pd.read_csv('bots_vs_users.csv')
 
-# Split up features and target
-X = df.drop(columns=['target'])
-y = df['target']
-
-# One-hot encode first
-X = pd.get_dummies(X, drop_first=True)
-
-
-# Split training from test and val first
-X_train, X_test_val, y_train, y_test_val = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-# Split validation and test data up next
-X_val, X_test, y_val, y_test = train_test_split(X_test_val, y_test_val, test_size=2/3, random_state=42, stratify=y_test_val)
+# Get data from the preprocessing file
+df = data_module.load_data()
+X, y, preprocessor = data_module.preprocess(df)
+X_train, y_train, X_val, y_val, X_test, y_test = data_module.split(X, y, preprocessor)
 
 pipeline = Pipeline([
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler()),
     ('xgb', XGBClassifier(
         objective='binary:logistic',
         eval_metric='logloss',
@@ -84,24 +74,28 @@ best_xgb_model.fit(X_train, y_train)
 
 
 # Plot feature importances
+feature_names = preprocessor.get_feature_names_out()
+
 importances = best_xgb_model.feature_importances_
 indices = np.argsort(importances)[::-1]
 top_n = 20
 top_indices = indices[:top_n]
 
 f, ax = plt.subplots(figsize=(8, 8))
-plt.title(f"Top 20 Variable Importance - XGBoosting")
-sns.set_color_codes("pastel")
-sns.barplot(y=[X_train.columns[i] for i in top_indices],
+plt.title("Top 20 Most Important Variables for XGBoost")
+sns.set_color_codes("bright")
+
+sns.barplot(y=[feature_names[i] for i in top_indices],
             x=importances[top_indices],
             label="Total", color="b")
-ax.set(ylabel="Variable", xlabel="Variable Importance (Gini)")
+
+ax.set(ylabel="Variable", xlabel="Variable Importance")
 sns.despine(left=True, bottom=True)
 plt.show()
 
 
 
-# Reported accuracy because class inbalance is not a problem, this comparison checks for overfitting
+# Check for overfitting
 train_pred = best_xgb_model.predict(X_train)
 val_pred = best_xgb_model.predict(X_val)
 test_pred = best_xgb_model.predict(X_test)
