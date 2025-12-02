@@ -13,3 +13,9 @@ All three models are trained on 70% of the original dataset. The models are goin
 
 Data_module file contains three function definitions to preprocess the data and ensure all models being evaluated see the same datasets.
 
+# Dependencies:
+- Seaborn
+- Tensorflow
+- Matplotlib
+- Sklearn
+- XGBoost
