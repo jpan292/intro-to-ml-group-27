@@ -1,8 +1,5 @@
 # Users vs bots classification: Logistic Regression Model
 
-## Load the dataset and display basic info
-
-
 #Import necessary libraries:
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -17,111 +14,20 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_curve, roc_auc_score, classification_report)
 import warnings
 warnings.filterwarnings('ignore')
+import data_module
 
-#Load the dataset:
-df = pd.read_csv('/content/drive/MyDrive/DATASCI_3000/Project/bots_vs_users.csv')
-df.head()
+df = data_module.load_data()
+X, y, preprocessor = data_module.preprocess(df)
+X_train, y_train, X_val, y_val, X_test, y_test = data_module.split(X, y, preprocessor)
 
-#Check basic stastics of the dataset
-df.info()
 
-#Check for leakage by using correlation matrix and eliminating abnormally high correlations (>=0.7)
-numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
-corr = df[numeric_cols].corr()
-plt.figure(figsize=(14, 10))
-sns.heatmap(
-    corr,
-    annot=True,
-    cmap='coolwarm',
-    fmt=".2f",
-    square=True,
-    linewidths=.5,
-    cbar=True
-)
-plt.title("Correlation Heatmap of Numeric Features")
-plt.show()
 
-## Preprocess, Split and Train the data
+logreg_classifier = LogisticRegression(max_iter=1000, random_state=42)
+logreg_classifier.fit(X_train, y_train) # Train the model
 
-# Dropping trivial/ overly-dominant features that affect the model's performance:
-dropped_features = ['has_short_name','has_first_name','city','is_blacklisted','has_photo', 'is_verified', 'is_confirmed',
-    'can_post_on_wall', 'can_send_message',
-    'can_add_as_friend', 'can_invite_to_group',
-    'access_to_closed_profile', 'all_posts_visible',
-    'has_maiden_name', 'has_military_service',
-    'has_tv', 'has_books', 'has_quotes', 'has_music',
-    'has_games', 'has_movies', 'has_activities',
-    'has_interests', 'has_about', 'has_relatives',
-    'has_schools', 'has_universities',
-    'occupation_type_university', 'occupation_type_work','has_status', 'has_website', 'has_mobile', 'audio_available',
-                    'has_nickname', 'has_last_name', 'has_occupation', 'has_domain']
-df = df.drop(columns = dropped_features)
-# Preprocess the data by handling the empty cells and cells that contain "Unknown" as a value
-# Cannot drop empty cells because it is one of the signals indicating a bot account
-# Strategy: replace empty cells with NaN
-df.replace("",np.nan,inplace=True)
-
-# Identify numerical features
-num_cols = df.select_dtypes(include =['float64']).columns.tolist()
-
-# subscribers_count feature is supposed to be a numerical feature but has "Unknown" cells
-# strategy: convert "Uknown" to NaN and then append subscribers_count into numerical_cols
-df['subscribers_count'] = df['subscribers_count'].replace("Unknown",np.nan)
-df['subscribers_count'] = pd.to_numeric(df['subscribers_count'])
-num_cols.append('subscribers_count')
-
-# Categorical features are everything else except for the target feature
-cat_cols = [c for c in df.columns if c not in num_cols and c != "target"]
-
-# Add missingness indicators (in order to distinguish cells with actual values and empty cells)
-for col in num_cols:
-  df[col+'_missing'] = df[col].isnull().astype(int)
-
-num_cols_with_indicator = num_cols + [col + '_missing' for col in num_cols]
-
-# Preprocessing Transformers
-# For numeric features, preprocess the data by median imputation (replace missing values with the median of the features)
-numeric_transformer = Pipeline(steps = [
-    ('imputer', SimpleImputer(strategy = 'median'))
-])
-
-# For categorical features use One Hot Encoding
-categorical_transformer = Pipeline(steps = [
-    ('onehot', OneHotEncoder(handle_unknown = 'ignore'))
-])
-
-# Combining everything into a singular preprocessor
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', numeric_transformer, num_cols),
-        ('cat', categorical_transformer, cat_cols)
-    ],
-    remainder='drop'
-)
-
-# Logistic Regression Classifier model
-logreg_classifier = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('classifier', LogisticRegression(max_iter = 500))
-])
-
-# Split the dataset into train/validate/test
-X = df.drop('target', axis = 1)
-y = df['target']
-
-# Split training from test and val first
-X_train, X_test_val, y_train, y_test_val = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-# Split validation and test data up next
-X_val, X_test, y_val, y_test = train_test_split(X_test_val, y_test_val, test_size=2/3, random_state=42, stratify=y_test_val)
-
-#Train the model
-logreg_classifier.fit(X_train, y_train)
-
-#Acess feature's importance using coefficients - highly dominating features are to be dropped from the Data frame
-feature_names = logreg_classifier.named_steps['preprocessor'].get_feature_names_out()
-
-coef = pd.Series(logreg_classifier.named_steps['classifier'].coef_[0],
-                 index=feature_names)
+#Acess feature's importance using coefficients
+feature_names = preprocessor.get_feature_names_out()
+coef = pd.Series(logreg_classifier.coef_[0], index=feature_names)
 print(coef.sort_values(ascending=False))
 
 """## Evaluation"""
