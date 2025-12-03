@@ -51,32 +51,15 @@ XGB_searched = RandomizedSearchCV(
 )
 
 XGB_searched.fit(X_train, y_train)
-print(f"Best parameters: {XGB_searched.best_params_}")
 
-# Train Final Model
-best_xgb_model = XGBClassifier(
-    max_depth=XGB_searched.best_params_.get('max_depth'),
-    learning_rate=XGB_searched.best_params_.get('learning_rate'),
-    n_estimators=XGB_searched.best_params_.get('n_estimators'),
-    objective='binary:logistic',
-    booster='gbtree',
-    tree_method='hist',
-    n_jobs=-1,
-    subsample=1,
-    reg_alpha=1,
-    scale_pos_weight=1,
-    random_state=42,
-    use_label_encoder=False,
-    eval_metric='logloss'
-)
 
-best_xgb_model.fit(X_train, y_train)
+best_model = XGB_searched.best_estimator_
 
 
 # Plot feature importances
 feature_names = preprocessor.get_feature_names_out()
 
-importances = best_xgb_model.feature_importances_
+importances = best_model.named_steps['xgb'].feature_importances_
 indices = np.argsort(importances)[::-1]
 top_n = 20
 top_indices = indices[:top_n]
@@ -96,30 +79,25 @@ plt.show()
 
 
 # Check for overfitting
-train_pred = best_xgb_model.predict(X_train)
-val_pred = best_xgb_model.predict(X_val)
-test_pred = best_xgb_model.predict(X_test)
-train_acc = accuracy_score(y_train, train_pred)
+
+val_pred = best_model.predict(X_val)
+test_pred = best_model.predict(X_test)
 val_acc = accuracy_score(y_val, val_pred)
 test_acc = accuracy_score(y_test, test_pred)
 print("Check for overfitting")
-print("Train Accuracy: ", train_acc)
+
 print("Validation Accuracy: ", val_acc)
 print("Test Accuracy: ", test_acc)
 
 
 
 # Plot the ROC Curves
-train_prob = best_xgb_model.predict_proba(X_train)[:, 1]
-val_prob = best_xgb_model.predict_proba(X_val)[:, 1]
-test_prob = best_xgb_model.predict_proba(X_test)[:, 1]
-train_auc = roc_auc_score(y_train, train_prob)
+val_prob = best_model.predict_proba(X_val)[:, 1]
+test_prob = best_model.predict_proba(X_test)[:, 1]
 val_auc = roc_auc_score(y_val, val_prob)
 test_auc = roc_auc_score(y_test, test_prob)
 
 plt.figure(figsize=(8, 6))
-fpr_train, tpr_train, _ = roc_curve(y_train, train_prob)
-plt.plot(fpr_train, tpr_train, linestyle='--', color='red', label=f'Train AUC = {train_auc:.3f}')
 fpr_val, tpr_val, _ = roc_curve(y_val, val_prob)
 plt.plot(fpr_val, tpr_val, linestyle='solid', color='blue', label=f'Validation AUC = {val_auc:.3f}')
 fpr_test, tpr_test, _ = roc_curve(y_test, test_prob)
